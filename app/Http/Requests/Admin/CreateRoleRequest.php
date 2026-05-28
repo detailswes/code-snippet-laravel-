@@ -28,12 +28,7 @@ class CreateRoleRequest extends FormRequest
     public function rules()
     {
         return [
-            'name' => [
-                'required', 'unique:roles,name,' . $this->id,
-                'slug' => [
-                    'source' => 'name'
-                ]
-            ],
+            'name' => 'required|unique:roles,name,' . $this->id,
         ];
     }
 }

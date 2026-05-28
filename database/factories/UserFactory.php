@@ -1,38 +1,30 @@
 <?php
+
 namespace Database\Factories;
+
+use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
-/**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\User>
- */
+
 class UserFactory extends Factory
 {
-    /**
-     * Define the model's default state.
-     *
-     * @return array<string, mixed>
-     */
-    public function definition()
+    public function definition(): array
     {
-        $status = fake()->shuffle([0,1])[0];
-        $role = fake()->shuffle([1,2])[0];
         return [
-            'first_name' => fake()->name(),
-            'last_name' => fake()->name(),
-            'email' => fake()->email(),
+            'first_name' => fake()->firstName(),
+            'last_name' => fake()->lastName(),
+            'email' => fake()->unique()->safeEmail(),
+            'phone' => fake()->numerify('##########'),
             'email_verified_at' => now(),
-            'password' => bcrypt('Teamwebethics3!'),
+            'password' => Hash::make(fake()->password(12)),
             'remember_token' => Str::random(10),
-            'status' => $status,
-            'role_id' => $role,
+            'status' => fake()->randomElement([User::STATUS_DISABLED, User::STATUS_ENABLED]),
+            'role_id' => fake()->randomElement([1, 2]),
         ];
     }
-    /**
-     * Indicate that the model's email address should be unverified.
-     *
-     * @return static
-     */
-    public function unverified()
+
+    public function unverified(): static
     {
         return $this->state(function (array $attributes) {
             return [

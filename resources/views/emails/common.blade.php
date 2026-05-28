@@ -4,7 +4,7 @@
 <head> </head>
 
 <body>
-    {!! $email_template !!}
+    {!! sanitizeEmailHtml($email_template) !!}
 </body>
 
 </html>

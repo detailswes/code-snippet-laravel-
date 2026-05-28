@@ -37,7 +37,12 @@ function getSiteLogo()
     $logo = File::siteLogo()->first();
     if (optional($logo)->path && $logo->path != '') {
         return url(Storage::url($logo->path));
-    } else {
-        return url('../img/logo.png');
     }
+
+    return url('../img/logo.png');
+}
+
+function sanitizeEmailHtml(string $html): string
+{
+    return (new \voku\helper\AntiXSS())->xss_clean($html);
 }

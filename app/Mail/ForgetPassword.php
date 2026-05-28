@@ -11,29 +11,19 @@ class ForgetPassword extends Mailable implements ShouldQueue
 {
     use Queueable, SerializesModels;
 
+    public string $email;
+    public string $email_template;
 
-    public $email;
-    public $token;
-    public $email_template;
-    /**
-     * Create a new message instance.
-     *
-     * @return void
-     */
-    public function __construct($email, $token, $email_template)
+    public function __construct(string $email, string $emailTemplate)
     {
         $this->email = $email;
-        $this->token = $token;
-        $this->email_template = $email_template;
+        $this->email_template = $emailTemplate;
     }
 
-    /**
-     * Build the message.
-     *
-     * @return $this
-     */
     public function build()
     {
-        return $this->markdown('emails.common');
+        return $this->markdown('emails.common', [
+            'email_template' => sanitizeEmailHtml($this->email_template),
+        ]);
     }
 }

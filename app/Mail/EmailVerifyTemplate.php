@@ -7,33 +7,22 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
 use Illuminate\Queue\SerializesModels;
 
-class EmailVerifyTemplate extends Mailable
+class EmailVerifyTemplate extends Mailable implements ShouldQueue
 {
     use Queueable, SerializesModels;
-    public $email;
-    public $token;
 
-    /**
-     * Create a new message instance.
-     *
-     * @return void
-     */
-    public function __construct($email, $token)
+    public string $email;
+    public string $content;
+
+    public function __construct(string $email, string $token)
     {
         $this->email = $email;
         $this->content = $token;
-        // print_r($subject);
-        // die();
     }
 
-    /**
-     * Build the message.
-     *
-     * @return $this
-     */
     public function build()
     {
-        return $this->subject($this->token)
+        return $this->subject('Verify your email address')
             ->view('auth.forget-password-email');
     }
 }

@@ -10,13 +10,13 @@
         @if ($user->previous_id)
             <a class="ml-4 mr-4 prev-next action2 viewData" href="javascript:void(0)" data-id="{{ $user->previous_id }}"
                 data-bug_id="{{ $user->previous_id }}" title="Previous User">
-                <img class="previousImg imageSize" src="{{ url('img/arrow-circle-left-solid.svg') }}">
+                <img class="previousImg imageSize" src="{{ url('img/arrow-circle-left-solid.svg') }}" alt="Previous user">
             </a>
         @endif
         @if ($user->next_id)
             <a class="ml-5 prev-next action2 viewData" href="javascript:void(0)" data-id="{{ $user->next_id }}"
                 data-bug_id="{{ $user->next_id }}" title="Next User">
-                <img class="nextImg imageSize" src="{{ url('img/arrow-circle-right-solid.svg') }}">
+                <img class="nextImg imageSize" src="{{ url('img/arrow-circle-right-solid.svg') }}" alt="Next user">
             </a>
         @endif
     </x-slot>

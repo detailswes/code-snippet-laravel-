@@ -30,6 +30,7 @@ class RegisterUserRequest extends FormRequest
             'last_name' => 'required',
             'email' => 'required|email|unique:users,email',
             'phone' => 'required|numeric',
+            'id' => 'prohibited',
             'password' => [
                 'required', new PasswordFormat,
             ],

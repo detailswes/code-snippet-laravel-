@@ -3,17 +3,21 @@
 namespace App\Services\Admin;
 
 use App\Models\User;
-use Illuminate\Http\Request;
-
 use App\Models\Role;
-
 use App\Models\UserRole;
-
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
+use InvalidArgumentException;
 
 class UserService
 {
+    private const ALLOWED_MODAL_VIEWS = [
+        'admin.users.create',
+        'admin.users.view',
+    ];
 
-    public function save(Request $request)
+    public function save(Request $request): void
     {
         $requestData = [
             'email' => $request->email,
@@ -22,50 +26,58 @@ class UserService
             'role_id' => $request->role_id,
         ];
 
-        /* In case of editing the users the request has not passwords */
         if ($request->password) {
-            $requestData['password'] =  bcrypt($request->password);
+            $requestData['password'] = Hash::make($request->password);
         }
 
-        $data = User::updateOrCreate([
-            'id' => $request->id
-        ], $requestData);
+        DB::transaction(function () use ($request, $requestData) {
+            $data = User::updateOrCreate([
+                'id' => $request->id
+            ], $requestData);
 
-        if ($data) {
-            /* If the users has already any role then update it else insert a new rows */
             UserRole::updateOrCreate([
                 'user_id' => $data->id
             ], [
                 'role_id' => $request->role_id
             ]);
-        }
+        });
     }
 
-    public function delete($id)
+    public function delete($id): bool
     {
-        UserRole::find($id)->delete();
-        return User::find($id)->delete();
+        UserRole::where('user_id', $id)->delete();
+
+        return (bool) User::find($id)?->delete();
     }
 
-    public function updateStatus(Request $request)
+    public function updateStatus(Request $request): bool
     {
-        return User::findOrFail($request->id)->update([
+        return (bool) User::findOrFail($request->id)->update([
             'status' => $request->status
         ]);
     }
 
-    public function renderModalHTML(Request $request)
+    public function renderModalHTML(Request $request): string
     {
+        $viewName = $this->resolveModalView($request->view);
         $user = User::find($request->id);
 
-        /* For adding Next and previous buttons on the view modal */
         if ($user) {
             $user->nextAndPrevious();
         }
 
-        return view($request->view, [
+        return view($viewName, [
             'roles' => Role::all(),
             'user' => $user ?? null,
         ])->render();
+    }
+
+    private function resolveModalView(string $view): string
+    {
+        if (!in_array($view, self::ALLOWED_MODAL_VIEWS, true)) {
+            throw new InvalidArgumentException('Invalid modal view requested.');
+        }
+
+        return $view;
     }
 }

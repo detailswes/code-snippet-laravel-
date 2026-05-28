@@ -2,21 +2,21 @@
 
 namespace App\Models;
 
+use Exception;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
-use App\Filters\UserFilter;
 use Illuminate\Database\Eloquent\Builder;
-use Carbon\Carbon;
 use App\Traits\Filterable;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use App\Traits\NextAndPrevious;
-use Storage;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 use App\Models\LoginOtp;
-use Mail;
-use Auth;
+use App\Models\EmailTemplate;
 use App\Mail\SendCodeMail;
 use App\Traits\HasPermissionsTrait;
 
@@ -24,49 +24,36 @@ class User extends Authenticatable
 {
     use HasApiTokens, HasFactory, Notifiable, Filterable, NextAndPrevious, HasPermissionsTrait;
 
-    const ADMIN = 'admin';
-    const USER = 2;
+    public const ROLE_ADMIN_SLUG = 'admin';
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var array<int, string>
-     */
+    public const STATUS_DISABLED = 0;
+    public const STATUS_ENABLED = 1;
+
     protected $fillable = [
         'first_name',
         'last_name',
         'email',
+        'phone',
         'password',
         'role_id',
         'status',
         'original_path'
     ];
 
-    /**
-     * The attributes that should be hidden for serialization.
-     *
-     * @var array<int, string>
-     */
     protected $hidden = [
         'password',
         'remember_token',
     ];
 
-    /**
-     * The attributes that should be cast.
-     *
-     * @var array<string, string>
-     */
     protected $casts = [
         'email_verified_at' => 'datetime',
     ];
 
     protected $appends = ['full_name', 'profile_image_path'];
 
-
     public function isAdmin(): bool
     {
-        return  $this->role->slug === self::ADMIN;
+        return $this->role->slug === self::ROLE_ADMIN_SLUG;
     }
 
     public function role()
@@ -79,9 +66,11 @@ class User extends Authenticatable
         return $this->hasMany(File::class);
     }
 
-    public function scopeIsNotSuperAdmin($query)
+    public function scopeIsNotSuperAdmin(Builder $query): Builder
     {
-        return $query->where('email', '!=', 'admin@admin.com');
+        return $query->whereHas('role', function (Builder $roleQuery) {
+            $roleQuery->where('slug', '!=', self::ROLE_ADMIN_SLUG);
+        });
     }
 
     protected function fullName(): Attribute
@@ -94,7 +83,7 @@ class User extends Authenticatable
     public function profileImagePath(): Attribute
     {
         return new Attribute(
-            get: fn () =>  optional($this->files()->where('type', 'profile_image')->first())->path,
+            get: fn () => optional($this->files()->where('type', 'profile_image')->first())->path,
         );
     }
 
@@ -112,51 +101,48 @@ class User extends Authenticatable
         return url('../img/admin.jpeg');
     }
 
-    public function fullOriginaiProfileImagePath()
+    public function fullOriginalProfileImagePath()
     {
         if ($this->original_path) {
             return Storage::url($this->original_path);
         }
+
         return url('../img/admin.jpeg');
     }
-    /* generete otp  */
-    public function generateCode()
+
+    public function generateCode(): void
     {
-        $code = rand(1000, 9999);
-        LoginOtp::updateOrCreate(
-            ['user_id' => auth()->user()->id],
-            ['code' => $code]
-        );
+        $code = (string) random_int(100000, 999999);
+
+        LoginOtp::storeForUser(auth()->user()->id, $code);
 
         try {
-            $email_template = [
-                'title' => 'OTP verification email',
-                'code' => $code
-            ];
             $template = EmailTemplate::where('slug', 'OTP_Template')->first();
+
+            if (!$template) {
+                return;
+            }
+
             $body = $template->description;
             $subject = $template->subject;
             $logo = url('img/logo.png');
             $instagram = url('img/instagram.jpeg');
             $linkedin = url('img/linkedin-logo.png');
             $twitter = url('img/twitter.jpeg');
-            $Code = $code;
             $list = [
                 '[Name]' => Auth::user()->full_name,
                 '[Logo]' => $logo,
-                '[OTP]' => $Code,
+                '[OTP]' => $code,
                 '[Footer_Logo]' => $logo,
                 '[Subject]' => $subject,
                 '[instagram]' => $instagram,
                 '[linkedin]' => $linkedin,
-                '[twitter]' =>  $twitter,
+                '[twitter]' => $twitter,
             ];
-            $find = array_keys($list);
-            $replace = array_values($list);
-            $email_template = str_ireplace($find, $replace, $body);
-            Mail::to(auth()->user()->email)->send(new SendCodeMail($email_template));
+            $emailTemplate = str_ireplace(array_keys($list), array_values($list), $body);
+            Mail::to(auth()->user()->email)->send(new SendCodeMail($emailTemplate));
         } catch (Exception $e) {
-            info("Error: " . $e->getMessage());
+            info('Error: ' . $e->getMessage());
         }
     }
 }
